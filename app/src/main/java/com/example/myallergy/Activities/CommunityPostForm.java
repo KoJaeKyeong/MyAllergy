@@ -1,21 +1,35 @@
 package com.example.myallergy.Activities;
 
+import android.Manifest;
 import android.content.Intent;
+import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
+import android.media.ExifInterface;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
+import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
+import android.support.v4.content.FileProvider;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.Toast;
 
-import com.example.myallergy.Fragments.FragCommunity;
+import com.example.myallergy.DataBase.UserProfile;
 import com.example.myallergy.R;
 import com.example.myallergy.Retrofit2.PostVO;
 import com.example.myallergy.Retrofit2.WebEndPoint;
 
+import java.io.File;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -24,6 +38,8 @@ import retrofit2.Callback;
 import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
+
+import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 
 public class CommunityPostForm extends AppCompatActivity {
 
@@ -35,7 +51,7 @@ public class CommunityPostForm extends AppCompatActivity {
     private ImageView ivImage;
     private ImageButton btnCamera, btnGallery;
     private EditText title, content;
-    private PostVO post;
+    private PostVO postVO;
     private Button btnComplete;
 
     @Override
@@ -47,44 +63,44 @@ public class CommunityPostForm extends AppCompatActivity {
     }
 
     private void initializeViews() {
-        Intent intent = getIntent();
-        Date date = new Date();
-        SimpleDateFormat dateForm = new SimpleDateFormat("yyyy/MM/dd");
-        SimpleDateFormat timeForm = new SimpleDateFormat("hh:mm:ss");
-        currentDate = dateForm.format(date)+" "+timeForm.format(date);
         title = findViewById(R.id.form_title);
         content = findViewById(R.id.form_content);
         btnComplete = findViewById(R.id.form_complete);
-        post = new PostVO();
+        postVO = new PostVO();
 
         buttonClickListener();
     }
 
+    //작성완료 눌렀을 때 editText의 글자들을 전송할 postVO의 필드값을 set해줌
+    private void setPostVO() {
+        postVO.setTitle(title.getText().toString());
+        postVO.setContent(content.getText().toString());
+        postVO.setWriter(UserProfile.userName);
+    }
+
     private void buttonClickListener() {
+
         btnComplete.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                WebEndPoint endPoint = getEndPoint();
+                //전송할 postVO객체의 필드값 set
+                setPostVO();
 
-                endPoint.sendCommunity(post).enqueue(new Callback<PostVO>() {
+                //서버로 postVO객체를 post해쥼. 응답이 오는건 없어서 onResponse는 작성할게없음. 서버에서는 postVO객체를 받아서 이렇게저렇게 해서 디비에 넣어줌
+                WebEndPoint endPoint = getEndPoint();
+                endPoint.sendCommunity(postVO).enqueue(new Callback<PostVO>() {
                     @Override
                     public void onResponse(Call<PostVO> call, Response<PostVO> response) {
-                        addText();
-                        Log.e("@@@@@@@@@@@@@@@",response.body().getContent());
                     }
-
                     @Override
                     public void onFailure(Call<PostVO> call, Throwable t) {
-
                     }
                 });
-
-                Intent intent1 = new Intent(getApplicationContext(), FragCommunity.class);
-                startActivity(intent1);
+                finish(); //액티비티 종료 -> 추가된 postVO확인
             }
 
         });
-        /*        btnCamera = (ImageButton) findViewById(R.id.form_camera);
+        btnCamera = (ImageButton) findViewById(R.id.form_camera);
         btnGallery = (ImageButton) findViewById(R.id.form_gallery);
         ivImage = findViewById(R.id.form_image);
         btnCamera.setOnClickListener(new View.OnClickListener() {
@@ -95,7 +111,7 @@ public class CommunityPostForm extends AppCompatActivity {
                         int permissionCheck = ContextCompat.checkSelfPermission(CommunityPostForm.this,
                                 Manifest.permission.WRITE_EXTERNAL_STORAGE);
 
-                        if(permissionCheck == PackageManager.PERMISSION_GRANTED){
+                        if(permissionCheck == PERMISSION_GRANTED){
                             selectPhoto();
                         } else {
                             requestPermission();
@@ -122,7 +138,7 @@ public class CommunityPostForm extends AppCompatActivity {
                         int permissionCheck = ContextCompat.checkSelfPermission(CommunityPostForm.this,
                                 Manifest.permission.READ_EXTERNAL_STORAGE);
 
-                        if(permissionCheck == PackageManager.PERMISSION_GRANTED){
+                        if(permissionCheck == PERMISSION_GRANTED){
                             selectGallery();
                         } else {
                             requestPermission();
@@ -134,15 +150,15 @@ public class CommunityPostForm extends AppCompatActivity {
                                 Toast toast = Toast.makeText(CommunityPostForm.this,"기능 사용을 위한 권한 동의가 필요합니다.",Toast.LENGTH_SHORT);
                                 toast.show();
                             }
-                        }!!!
+                        }
 
                         break;
                 }
             }
-        });*/
+        });
     }
     // 접근요청
-/*
+
     private void requestPermission() {
         ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},REQUEST_PERMISSION_CODE);
     }
@@ -166,7 +182,7 @@ public class CommunityPostForm extends AppCompatActivity {
             }
         }
     }
-
+/*
     private Bitmap resize(Context context, Uri uri, int resize){
         Bitmap resizeBitmap = null;
         BitmapFactory.Options options = new BitmapFactory.Options();
@@ -195,6 +211,8 @@ public class CommunityPostForm extends AppCompatActivity {
 
         return resizeBitmap;
     }
+
+ */
     // 카메라로 찍은 사진파일 생
     private File createImageFile() throws IOException {
         File dir = new File(Environment.getExternalStorageDirectory()+"/path/");
@@ -306,7 +324,7 @@ public class CommunityPostForm extends AppCompatActivity {
         switch (requestCode){
 
             case REQUEST_PERMISSION_CODE:
-                if (grantResults[0]== PackageManager.PERMISSION_GRANTED){
+                if (grantResults[0]== PERMISSION_GRANTED){
                     selectPhoto();
                 }else{
                     Toast toast = Toast.makeText(CommunityPostForm.this,"기능 사용을 위한 권한 동의가 필요합니다.",Toast.LENGTH_SHORT);
@@ -316,7 +334,6 @@ public class CommunityPostForm extends AppCompatActivity {
                 break;
         }
     }
- */
 
     private WebEndPoint getEndPoint() {
         Retrofit retrofit = new Retrofit.Builder()
@@ -325,12 +342,6 @@ public class CommunityPostForm extends AppCompatActivity {
                 .build();
         WebEndPoint endPoint = retrofit.create(WebEndPoint.class);
         return endPoint;
-    }
-
-    private void addText() {
-        post.setTitle(title.getText().toString());
-        //post.setDate(currentDate);
-        post.setContent(content.getText().toString());
     }
 
 }

@@ -6,6 +6,9 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.Toast;
 
+import com.example.myallergy.DataBase.AllergyDAO;
+import com.example.myallergy.DataBase.UserDAO;
+import com.example.myallergy.DataBase.UserDataBase;
 import com.example.myallergy.R;
 import com.nhn.android.naverlogin.OAuthLogin;
 import com.nhn.android.naverlogin.OAuthLoginHandler;
@@ -18,6 +21,9 @@ public class NaverLoginActivity extends AppCompatActivity {
     OAuthLoginButton mOAuthLoginButton;
     private OAuthLoginHandler mOAuthLoginHandler;
 
+    private UserDataBase db;
+    private UserDAO userDAO;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -28,8 +34,13 @@ public class NaverLoginActivity extends AppCompatActivity {
         mOAuthLoginModule.init(this, "32ZtKDUrZ5z_TFOSBnzY", "zVKwrsfsvc", "clientName");
         mOAuthLoginHandler = new OAuthLoginHandler() {
             @Override
-            public void run(boolean b) {
-
+            public void run(boolean success) {
+                if (success) {
+                    startUserSetActivity();
+                    finish();
+                } else {
+                    Toast.makeText(getApplicationContext(), "로그인에 실패했습니다", Toast.LENGTH_LONG).show();
+                }
             }
         };
         //네이버로 로그인 실행
@@ -37,18 +48,25 @@ public class NaverLoginActivity extends AppCompatActivity {
         mOAuthLoginButton.setOAuthLoginHandler(mOAuthLoginHandler);
     }
 
-    @Override
-    public void onResume(){
-        super.onResume();
-        //네이버 로그인 사용자 인스턴스 가져오기
-        OAuthLogin mOAuthLogin = OAuthLogin.getInstance();
-        String token = mOAuthLogin.getAccessToken(getApplicationContext());
+    private void startUserSetActivity() {
+        initializeDB();
 
-        if(token != null) { //로그인 된 상태라면
-            Intent intent = new Intent(this, AllergySelectActivity.class);
-            startActivity(intent);//알러지 선택 activity 실행
-            finish();
-        }
+        //db에 저장된 사용자 정보가 없으면
+        new Thread() {
+            public void run() {
+                if (userDAO.getUser() == null) {
+                    Intent intent = new Intent(getApplicationContext(), CreateUserNameActivity.class);
+                    startActivity(intent);//유저 이름 생성 activity 실행
+                    intent = new Intent(getApplicationContext(), AllergySelectActivity.class);
+                    startActivity(intent);//알러지 선택 activity 실행
+                }
+            }
+        }.start();
+    }
+
+    private void initializeDB() {
+        db = UserDataBase.getInstance(getApplicationContext());
+        userDAO = db.getUserDAO();
     }
 
     //뒤로가기 누르면 종료

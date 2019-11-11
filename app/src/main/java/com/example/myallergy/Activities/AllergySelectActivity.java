@@ -8,8 +8,8 @@ import android.widget.CheckBox;
 
 import com.example.myallergy.DataBase.Allergy;
 import com.example.myallergy.DataBase.AllergyDAO;
-import com.example.myallergy.DataBase.User;
 import com.example.myallergy.DataBase.UserDataBase;
+import com.example.myallergy.DataBase.UserProfile;
 import com.example.myallergy.R;
 
 import java.util.ArrayList;
@@ -33,8 +33,7 @@ public class AllergySelectActivity extends AppCompatActivity {
         btnSubmit = findViewById(R.id.allergy_submit);
 
         //database, dao 초기화
-        db = UserDataBase.getInstance(getApplicationContext());
-        allergyDAO = db.getAllergyDAO();
+        initializeDB();
 
         //이전에 설정된 알러지 정보가 있으면 체크박스 체크 설정
         isAllergyTableExist();
@@ -49,7 +48,12 @@ public class AllergySelectActivity extends AppCompatActivity {
         });
     }
 
-    public void initializeCheckBoxes () {
+    private void initializeDB() {
+        db = UserDataBase.getInstance(getApplicationContext());
+        allergyDAO = db.getAllergyDAO();
+    }
+
+    private void initializeCheckBoxes () {
         //ceckbox를 담을 lsit
         checkBoxList = new ArrayList<>();
 
@@ -64,7 +68,7 @@ public class AllergySelectActivity extends AppCompatActivity {
     //알러지 정보를 db에서 가져와서 checkbox 설정
     public void isAllergyTableExist () {
 
-        for(Allergy allergy : User.userAllergyDatas) {
+        for(Allergy allergy : UserProfile.userAllergyDatas) {
             setCheckBoxStatus(allergy);
         }
     }
@@ -93,7 +97,7 @@ public class AllergySelectActivity extends AppCompatActivity {
                         allergyDAO.insert(tempAllergy);
                     }
                 }
-                User.userAllergyDatas = allergyDAO.getAllergyList();
+                UserProfile.userAllergyDatas = allergyDAO.getAllergyList();
             }
         }.start();
     }
